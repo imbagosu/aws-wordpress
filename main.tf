@@ -21,8 +21,8 @@ module "network" {
 
 module "rds" {
   source      = "./terraform-rds"
-  db_username = var.db_username 
-  db_password = var.db_password 
+  db_username = var.db_username
+  db_password = var.db_password
 }
 
 
