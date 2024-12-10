@@ -20,18 +20,18 @@ module "network" {
 }
 
 module "rds" {
-  source = "./terraform-rds"
+  source      = "./terraform-rds"
+  db_username = var.db_username 
+  db_password = var.db_password 
 }
+
 
 module "ec2" {
   source = "./terraform-ec2"
 
-  # Pass the VPC ID from the network module output
   vpc_id = module.network.vpc_id
 
-  # Pass the public subnets from the network module output
   public_subnets = module.network.public_subnets
 
-  # Provide the key pair name for SSH access
   key_pair_name = "my-key-pair"
 }
