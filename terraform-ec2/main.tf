@@ -1,20 +1,8 @@
-data "aws_ami" "wordpress" {
-  most_recent = true
-
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
-  }
-
-  owners = ["amazon"]
-}
-
 resource "aws_launch_template" "wordpress" {
   name_prefix   = "wordpress-launch-template-"
   instance_type = "t2.micro"
   image_id      = data.aws_ami.wordpress.id
-
-  key_name = var.key_pair_name
+  key_name      = var.key_pair_name
 
   network_interfaces {
     associate_public_ip_address = true
@@ -27,18 +15,36 @@ resource "aws_launch_template" "wordpress" {
 
   user_data = base64encode(<<-EOT
     #!/bin/bash
-    sudo yum update -y
-    sudo yum install -y httpd php php-mysqlnd amazon-cloudwatch-agent
-    sudo systemctl start httpd
-    sudo systemctl enable httpd
-    echo "<?php phpinfo(); ?>" > /var/www/html/info.php
-    curl -O https://wordpress.org/latest.tar.gz
-    tar -xzf latest.tar.gz
-    sudo cp -r wordpress/* /var/www/html/
-    sudo chown -R apache:apache /var/www/html/
-    sudo systemctl restart httpd
+    set -e
+    exec > >(tee /var/log/user-data.log) 2>&1
 
-    # Configure CloudWatch Agent
+    # Update and install packages
+    yum update -y
+    yum install -y httpd php php-mysqlnd amazon-cloudwatch-agent wget
+
+    # Start and enable Apache
+    systemctl start httpd
+    systemctl enable httpd
+
+    # Download and configure WordPress
+    cd /tmp
+    wget https://wordpress.org/latest.tar.gz
+    tar -xzf latest.tar.gz
+    cp -r wordpress/* /var/www/html/
+    
+    # Set correct permissions
+    chown -R apache:apache /var/www/html/
+    chmod -R 755 /var/www/html/
+
+    # Create sample WordPress config if not exists
+    if [ ! -f /var/www/html/wp-config.php ]; then
+      cp /var/www/html/wp-config-sample.php /var/www/html/wp-config.php
+    fi
+
+    # Restart Apache to ensure all changes take effect
+    systemctl restart httpd
+
+    # CloudWatch Agent Configuration (rest of your original config remains the same)
     cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
     {
       "agent": {
@@ -65,11 +71,10 @@ resource "aws_launch_template" "wordpress" {
       }
     }
     EOF
-
-    sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
-EOT
+    
+    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+  EOT
   )
-
 
   tag_specifications {
     resource_type = "instance"

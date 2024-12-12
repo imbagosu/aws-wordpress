@@ -14,7 +14,7 @@ provider "aws" {
 
 module "network" {
   source              = "./terraform-network"
-  vpc_cidr            = "10.0.0.0/16"
+  vpc_cidr            = "192.168.0.0/16"
   public_subnet_count = 2
 }
 

@@ -1,6 +1,6 @@
 variable "vpc_cidr" {
   description = "CIDR block for the VPC"
-  default     = "10.0.0.0/16"
+  default     = "192.168.0.0/16"
 }
 
 variable "public_subnet_count" {
@@ -19,10 +19,10 @@ variable "region" {
 }
 
 variable "trusted_ssh_cidr" {
-  default = "10.0.0.0/16"
+  default = "0.0.0.0/0"
 }
 
 variable "public_subnets_cidr_blocks" {
   description = "List of CIDR blocks for public subnets"
-  default = "10.0.0.0/24"
+  default = "192.168.0.0/16"
 }
