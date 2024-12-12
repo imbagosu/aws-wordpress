@@ -7,7 +7,7 @@ resource "aws_security_group" "ec2" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["172.18.224.1/32"]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
@@ -15,7 +15,7 @@ resource "aws_security_group" "ec2" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["172.18.224.1/32"]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -42,13 +42,6 @@ resource "aws_security_group" "lb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-ingress {
-  description = "Allow HTTP traffic from the internet"
-  from_port   = 80
-  to_port     = 80
-  protocol    = "tcp"
-  cidr_blocks = ["0.0.0.0/0"]
-}
 
   egress {
     from_port   = 0
