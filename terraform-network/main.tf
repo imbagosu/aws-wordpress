@@ -95,3 +95,93 @@ resource "aws_route_table_association" "private" {
 }
 
 data "aws_availability_zones" "available" {}
+
+# NACL for public subnets
+resource "aws_network_acl" "public" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "Public NACL"
+  }
+}
+
+# Allow inbound HTTP traffic
+resource "aws_network_acl_rule" "public_in_http" {
+  network_acl_id = aws_network_acl.public.id
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  rule_number    = 100
+  cidr_block     = "0.0.0.0/0"
+  from_port      = 80
+  to_port        = 80
+}
+
+# Allow inbound SSH traffic from trusted IP
+resource "aws_network_acl_rule" "public_in_ssh" {
+  network_acl_id = aws_network_acl.public.id
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  rule_number    = 110
+  cidr_block     = var.trusted_ssh_cidr # Replace with your trusted IP
+  from_port      = 22
+  to_port        = 22
+}
+
+# Allow outbound traffic
+resource "aws_network_acl_rule" "public_out_all" {
+  network_acl_id = aws_network_acl.public.id
+  egress         = true
+  protocol       = "-1" # All protocols
+  rule_action    = "allow"
+  rule_number    = 100
+  cidr_block     = "0.0.0.0/0"
+}
+
+# NACL for private subnets
+resource "aws_network_acl" "private" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "Private NACL"
+  }
+}
+
+# Allow inbound MySQL traffic from public subnets
+resource "aws_network_acl_rule" "private_in_mysql" {
+  network_acl_id = aws_network_acl.private.id
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  rule_number    = 100
+  cidr_block     = var.public_subnets_cidr_blocks
+  from_port      = 3306
+  to_port        = 3306
+}
+
+# Allow outbound traffic
+resource "aws_network_acl_rule" "private_out_all" {
+  network_acl_id = aws_network_acl.private.id
+  egress         = true
+  protocol       = "-1" # All protocols
+  rule_action    = "allow"
+  rule_number    = 100
+  cidr_block     = "0.0.0.0/0"
+}
+
+# Associate Public NACL with public subnets
+resource "aws_network_acl_association" "public" {
+  count = length(aws_subnet.public)
+
+  subnet_id      = aws_subnet.public[count.index].id
+  network_acl_id = aws_network_acl.public.id
+}
+
+# Associate Private NACL with private subnets
+resource "aws_network_acl_association" "private" {
+  count = length(aws_subnet.private)
+
+  subnet_id      = aws_subnet.private[count.index].id
+  network_acl_id = aws_network_acl.private.id
+}

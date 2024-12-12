@@ -9,21 +9,24 @@ terraform {
 }
 
 provider "aws" {
-  region = "eu-west-2"
+  region = "eu-central-1"
 }
 
 module "network" {
-  source = "./terraform-network"
-
+  source              = "./terraform-network"
   vpc_cidr            = "10.0.0.0/16"
   public_subnet_count = 2
 }
 
-module "rds" {
-  source      = "./terraform-rds"
-  db_username = var.db_username
-  db_password = var.db_password
-}
+#module "rds" {
+#  source                = "./terraform-rds"
+#  db_username           = "wordpress_user"
+#  db_password           = var.db_password
+#  private_subnets       = module.network.private_subnets
+#  vpc_id                = module.network.vpc_id
+#  ec2_security_group_id = module.ec2.ec2_security_group_id
+#}
+
 
 
 module "ec2" {
@@ -33,5 +36,11 @@ module "ec2" {
 
   public_subnets = module.network.public_subnets
 
-  key_pair_name = "my-key-pair"
+  key_pair_name = "my-key-pari"
+}
+
+module "iam" {
+  source         = "./terraform-iam"
+  s3_bucket_name = "wordpress-bucket"
+  region         = "eu-central-1"
 }
