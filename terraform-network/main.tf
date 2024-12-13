@@ -105,31 +105,17 @@ resource "aws_network_acl" "public" {
   }
 }
 
-# Allow inbound HTTP traffic
-resource "aws_network_acl_rule" "public_in_http" {
+# Allow all inbound traffic
+resource "aws_network_acl_rule" "public_in_all" {
   network_acl_id = aws_network_acl.public.id
   egress         = false
-  protocol       = "tcp"
+  protocol       = "-1" # All protocols
   rule_action    = "allow"
   rule_number    = 100
   cidr_block     = "0.0.0.0/0"
-  from_port      = 80
-  to_port        = 80
 }
 
-# Allow inbound SSH traffic from trusted IP
-resource "aws_network_acl_rule" "public_in_ssh" {
-  network_acl_id = aws_network_acl.public.id
-  egress         = false
-  protocol       = "tcp"
-  rule_action    = "allow"
-  rule_number    = 110
-  cidr_block     = var.trusted_ssh_cidr # Replace with your trusted IP
-  from_port      = 22
-  to_port        = 22
-}
-
-# Allow outbound traffic
+# Allow all outbound traffic
 resource "aws_network_acl_rule" "public_out_all" {
   network_acl_id = aws_network_acl.public.id
   egress         = true

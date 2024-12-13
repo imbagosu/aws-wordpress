@@ -1,3 +1,12 @@
+data "aws_ami" "wordpress" {
+  most_recent = true
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+  owners = ["amazon"]
+}
+
 resource "aws_launch_template" "wordpress" {
   name_prefix   = "wordpress-launch-template-"
   instance_type = "t2.micro"
@@ -13,68 +22,13 @@ resource "aws_launch_template" "wordpress" {
     name = aws_iam_instance_profile.ec2_instance_profile.name
   }
 
-  user_data = base64encode(<<-EOT
-    #!/bin/bash
-    set -e
-    exec > >(tee /var/log/user-data.log) 2>&1
-
-    # Update and install packages
-    yum update -y
-    yum install -y httpd php php-mysqlnd amazon-cloudwatch-agent wget
-
-    # Start and enable Apache
-    systemctl start httpd
-    systemctl enable httpd
-
-    # Download and configure WordPress
-    cd /tmp
-    wget https://wordpress.org/latest.tar.gz
-    tar -xzf latest.tar.gz
-    cp -r wordpress/* /var/www/html/
-    
-    # Set correct permissions
-    chown -R apache:apache /var/www/html/
-    chmod -R 755 /var/www/html/
-
-    # Create sample WordPress config if not exists
-    if [ ! -f /var/www/html/wp-config.php ]; then
-      cp /var/www/html/wp-config-sample.php /var/www/html/wp-config.php
-    fi
-
-    # Restart Apache to ensure all changes take effect
-    systemctl restart httpd
-
-    # CloudWatch Agent Configuration (rest of your original config remains the same)
-    cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
-    {
-      "agent": {
-        "metrics_collection_interval": 60,
-        "run_as_user": "root"
-      },
-      "logs": {
-        "logs_collected": {
-          "files": {
-            "collect_list": [
-              {
-                "file_path": "/var/log/messages",
-                "log_group_name": "/wordpress/ec2/messages",
-                "log_stream_name": "{instance_id}"
-              },
-              {
-                "file_path": "/var/log/httpd/access_log",
-                "log_group_name": "/wordpress/ec2/httpd-access",
-                "log_stream_name": "{instance_id}"
-              }
-            ]
-          }
-        }
-      }
-    }
-    EOF
-    
-    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
-  EOT
-  )
+  user_data = base64encode(templatefile("${path.module}/user-data.sh", {
+    DB_NAME     = "wordpress",
+    DB_USER     = var.db_username,
+    DB_PASSWORD = var.db_password,
+    DB_HOST     = var.db_endpoint
+    INSTANCE_URL = "localhost"
+  }))
 
   tag_specifications {
     resource_type = "instance"
@@ -83,6 +37,8 @@ resource "aws_launch_template" "wordpress" {
     }
   }
 }
+
+
 
 resource "aws_autoscaling_group" "wordpress" {
   launch_template {
@@ -100,7 +56,7 @@ resource "aws_autoscaling_group" "wordpress" {
 
   health_check_type         = "EC2"
   health_check_grace_period = 300
-  depends_on = [aws_lb_target_group.wordpress]
+  depends_on                = [aws_lb_target_group.wordpress]
 }
 
 resource "aws_lb" "wordpress" {
@@ -159,7 +115,7 @@ resource "aws_iam_role" "ec2_cloudwatch_role" {
 resource "aws_iam_policy" "cloudwatch_policy" {
   name        = "ec2-cloudwatch-policy"
   description = "Allow EC2 instances to send logs and metrics to CloudWatch"
-  policy      = jsonencode({
+  policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
       {
