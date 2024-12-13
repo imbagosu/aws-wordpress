@@ -30,3 +30,24 @@ variable "asg_desired_capacity" {
   type        = number
   default     = 1
 }
+
+variable "db_endpoint" {
+  description = "The RDS database endpoint"
+  type        = string
+}
+
+variable "db_username" {
+  description = "The RDS database username"
+  type        = string
+}
+
+variable "db_password" {
+  description = "The RDS database password"
+  type        = string
+}
+
+variable "db_name" {
+  description = "The RDS database endpoint"
+  type        = string
+  default = "wordpress"
+}

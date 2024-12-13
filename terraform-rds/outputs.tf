@@ -1,9 +1,11 @@
-output "db_endpoint" {
-  description = "RDS endpoint for the database"
-  value       = aws_db_instance.wordpress.endpoint
+output "rds_endpoint" {
+  value = aws_db_instance.wordpress.endpoint
 }
 
-output "db_name" {
-  description = "Database name"
-  value       = aws_db_instance.wordpress.db_name
+output "rds_username" {
+  value = var.db_username
+}
+
+output "rds_password" {
+  value = var.db_password
 }
